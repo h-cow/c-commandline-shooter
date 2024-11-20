@@ -19,7 +19,6 @@ struct Player {
 	unsigned char x;
 	unsigned char y;
 	unsigned char dir;
-	char* symbol;
 };
 
 struct GameState{
@@ -49,6 +48,13 @@ static struct GunDir gunDirs[8] = {
 	{-1, -1},
 	{0, -1},
 	{1, -1}
+};
+
+static char* playerSymbol[4] = {
+	"\033[34m0\033[0m",
+	"\033[32m0\033[0m",
+	"\033[33m0\033[0m",
+	"\033[35m0\033[0m",
 };
 
 static char* gunSymbol[4][8] = {
@@ -129,7 +135,7 @@ void getItemAtXY(char** symbol, struct GameState gameState, int x, int y) {
 		struct Player * currentPlayer = &(gameState.player[i]);
 		struct GunDir * gunDir = &(gunDirs[currentPlayer->dir]);
 		if (currentPlayer->x == x && currentPlayer->y == y) {
-			*symbol = currentPlayer->symbol;
+			*symbol = playerSymbol[i];
 		} else if ((gunDir->xOffset + currentPlayer->x) == x && (gunDir->yOffset + currentPlayer->y) == y) {
 			*symbol = gunSymbol[i][currentPlayer->dir];
 		}
@@ -144,7 +150,6 @@ int main() {
 	player1.y = 1;
 	player1.x = 1;
 	player1.dir = 0;
-	player1.symbol = "\033[34m0\033[0m";
 	
 
 	struct GameState gameState = {
