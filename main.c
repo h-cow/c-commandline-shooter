@@ -21,7 +21,7 @@ struct Location {
 struct Player {
 	int x;
 	int y;
-	unsigned char dir;
+	int dir;
 };
 
 struct GameState{
@@ -146,9 +146,8 @@ void getItemAtXY(char** symbol, struct GameState gameState, int x, int y) {
 	}
 }
 
-_Bool checkNoPlayer1Collision(int y, int x, struct GameState gameState) {
-		struct Player * plyr = &(gameState.player[0]);
-		struct GunDir * gunDir = &(gunDirs[plyr->dir]);
+_Bool testNewPosPlayerCollision(int y, int x, int dir, struct GameState gameState) {
+		struct GunDir * gunDir = &(gunDirs[dir]);
 		int turretX = x + gunDir->xOffset;
 		int turretY = y + gunDir->yOffset;
 		if (x < 0 || turretX < 0) {
@@ -226,34 +225,42 @@ int main() {
 			char ch = getchar();
 			int* pY = &gameState.player[0].y;
 			int* pX = &gameState.player[0].x;
+			int* pDir = &gameState.player[0].dir;
 			if (ch == ';') {
 				isGameOn = 0;
 			} else if (ch == 'w') {
-				if (checkNoPlayer1Collision(*pY + 1, *pX, gameState)) {
+				if (testNewPosPlayerCollision(*pY + 1, *pX, *pDir, gameState)) {
 					*pY += 1;
 				}
 			} else if (ch == 's') {
-				if (checkNoPlayer1Collision(*pY - 1, *pX, gameState)) {
+				if (testNewPosPlayerCollision(*pY - 1, *pX, *pDir, gameState)) {
 					*pY -= 1;
 				}
 			} else if (ch == 'd') {
-				if (checkNoPlayer1Collision(*pY, *pX + 1, gameState)) {
+				if (testNewPosPlayerCollision(*pY, *pX + 1, *pDir, gameState)) {
 					*pX += 1;
 				}
 			} else if (ch == 'a') {
-				if (checkNoPlayer1Collision(*pY, *pX - 1, gameState)) {
+				if (testNewPosPlayerCollision(*pY, *pX - 1, *pDir, gameState)) {
 					*pX -= 1;
 				}
 			} else if (ch == 'k') {
-				gameState.player[0].dir = (gameState.player[0].dir + 1) % 8;
-
-			} else if (ch == 'j') {
-				if (gameState.player[0].dir == 0) {
-					gameState.player[0].dir = 7;
-				} else {
-					gameState.player[0].dir = (gameState.player[0].dir - 1);
+				int newDir = (gameState.player[0].dir + 1) % 8;
+				if (testNewPosPlayerCollision(*pY, *pX, newDir, gameState)) {
+					gameState.player[0].dir = newDir;
 				}
 
+			} else if (ch == 'j') {
+				int newDir;
+				if (*pDir == 0) {
+					newDir = 7;
+				} else {
+					newDir = (*pDir - 1);
+				}
+				
+				if (testNewPosPlayerCollision(*pY, *pX, newDir, gameState)) {
+					gameState.player[0].dir = newDir;
+				}
 			}
 		}
 		usleep(33000); // Sleep for 100ms to reduce CPU usage
