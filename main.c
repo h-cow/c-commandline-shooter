@@ -6,9 +6,12 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define BOARD_X 27
-#define BOARD_Y 20
+#define MAC_BOARD_X 27
+#define MAC_BOARD_Y 20
 #define MAX_NUMBER_OF_PLAYERS 4
+
+static int BOARD_X = MAC_BOARD_X;
+static int BOARD_Y = MAC_BOARD_Y;
 
 struct Location {
 	unsigned char y;
@@ -16,14 +19,14 @@ struct Location {
 };
 
 struct Player {
-	unsigned char x;
-	unsigned char y;
+	int x;
+	int y;
 	unsigned char dir;
 };
 
 struct GameState{
 	unsigned char numberOfPlayers;
-	unsigned char gameBoard[BOARD_Y][BOARD_X];
+	unsigned char gameBoard[MAC_BOARD_Y][MAC_BOARD_X];
 	struct Player player[MAX_NUMBER_OF_PLAYERS];
 };
 
@@ -105,6 +108,7 @@ static char* gunSymbol[4][8] = {
 };
 
 static char MAP_SYMBOL[3] = {'#', '`', '%'};
+static _Bool MAP_OBSTRUCTION[3] = {1, 0, 1};
 
 // Function to configure terminal for non-blocking input
 void configureTerminal(struct termios *old) {
@@ -142,6 +146,27 @@ void getItemAtXY(char** symbol, struct GameState gameState, int x, int y) {
 	}
 }
 
+_Bool checkNoPlayer1Collision(int y, int x, struct GameState gameState) {
+		struct Player * plyr = &(gameState.player[0]);
+		struct GunDir * gunDir = &(gunDirs[plyr->dir]);
+		int turretX = x + gunDir->xOffset;
+		int turretY = y + gunDir->yOffset;
+		if (x < 0 || turretX < 0) {
+			return 0;
+		} else if (y < 0 || turretX < 0) {
+			return 0;
+		} else if (y >= (BOARD_Y - 1) || turretY >= (BOARD_Y - 1)) {
+			return 0;
+		} else if (x >= (BOARD_X - 1) || turretX >= (BOARD_X - 1)) {
+			return 0;
+		} else if (MAP_OBSTRUCTION[gameState.gameBoard[y][x]]) {
+			return 0;
+		} else if (MAP_OBSTRUCTION[gameState.gameBoard[turretY][turretX]]) {
+			return 0;
+		}
+		return 1;
+}
+
 int main() {
 	_Bool isGameOn = 1;
 
@@ -161,8 +186,8 @@ int main() {
 			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
 			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
 			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
+			{0, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
+			{0, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
 			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
 			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
 			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
@@ -199,24 +224,36 @@ int main() {
 		}
 		if (isKeyPressed()) {
 			char ch = getchar();
+			int* pY = &gameState.player[0].y;
+			int* pX = &gameState.player[0].x;
 			if (ch == ';') {
 				isGameOn = 0;
 			} else if (ch == 'w') {
-				gameState.player[0].y++;
+				if (checkNoPlayer1Collision(*pY + 1, *pX, gameState)) {
+					*pY += 1;
+				}
 			} else if (ch == 's') {
-				gameState.player[0].y--;
+				if (checkNoPlayer1Collision(*pY - 1, *pX, gameState)) {
+					*pY -= 1;
+				}
 			} else if (ch == 'd') {
-				gameState.player[0].x++;
+				if (checkNoPlayer1Collision(*pY, *pX + 1, gameState)) {
+					*pX += 1;
+				}
 			} else if (ch == 'a') {
-				gameState.player[0].x--;
+				if (checkNoPlayer1Collision(*pY, *pX - 1, gameState)) {
+					*pX -= 1;
+				}
 			} else if (ch == 'k') {
 				gameState.player[0].dir = (gameState.player[0].dir + 1) % 8;
+
 			} else if (ch == 'j') {
 				if (gameState.player[0].dir == 0) {
 					gameState.player[0].dir = 7;
 				} else {
 					gameState.player[0].dir = (gameState.player[0].dir - 1);
 				}
+
 			}
 		}
 		usleep(33000); // Sleep for 100ms to reduce CPU usage
