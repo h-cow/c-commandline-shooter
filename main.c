@@ -4,6 +4,7 @@
 #include <time.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <string.h>
 
 #define BOARD_X 27
 #define BOARD_Y 20
@@ -18,7 +19,7 @@ struct Player {
 	unsigned char x;
 	unsigned char y;
 	unsigned char dir;
-	char symbol;
+	char* symbol;
 };
 
 struct GameState{
@@ -28,7 +29,6 @@ struct GameState{
 };
 
 struct GunDir{
-	char symbol;
 	int yOffset;
 	int xOffset;
 };
@@ -41,14 +41,61 @@ struct GunDir{
 * 5 4 3
  */
 static struct GunDir gunDirs[8] = {
-	{'|', 1, 0},
-	{'/', 1, 1},
-	{'-', 0, 1},
-	{'\\', -1, 1},
-	{'|', -1, 0},
-	{'/', -1, -1},
-	{'-', 0, -1},
-	{'\\', 1, -1}
+	{1, 0},
+	{1, 1},
+	{0, 1},
+	{-1, 1},
+	{-1, 0},
+	{-1, -1},
+	{0, -1},
+	{1, -1}
+};
+
+static char* gunSymbol[4][8] = {
+    // Index 0: Blue symbols
+    {
+        "\033[34m|\033[0m",
+        "\033[34m/\033[0m",
+        "\033[34m-\033[0m",
+        "\033[34m\\\033[0m",
+        "\033[34m|\033[0m",
+        "\033[34m/\033[0m",
+        "\033[34m-\033[0m",
+        "\033[34m\\\033[0m"
+    },
+    // Index 1: Green symbols
+    {
+        "\033[32m|\033[0m",
+        "\033[32m/\033[0m",
+        "\033[32m-\033[0m",
+        "\033[32m\\\033[0m",
+        "\033[32m|\033[0m",
+        "\033[32m/\033[0m",
+        "\033[32m-\033[0m",
+        "\033[32m\\\033[0m"
+    },
+    // Index 2: Yellow symbols
+    {
+        "\033[33m|\033[0m",
+        "\033[33m/\033[0m",
+        "\033[33m-\033[0m",
+        "\033[33m\\\033[0m",
+        "\033[33m|\033[0m",
+        "\033[33m/\033[0m",
+        "\033[33m-\033[0m",
+        "\033[33m\\\033[0m"
+    },
+    // Index 3: Magenta symbols
+    {
+        "\033[35m|\033[0m",
+        "\033[35m/\033[0m",
+        "\033[35m-\033[0m",
+        "\033[35m\\\033[0m",
+        "\033[35m|\033[0m",
+        "\033[35m/\033[0m",
+        "\033[35m-\033[0m",
+        "\033[35m\\\033[0m"
+    }
 };
 
 static char MAP_SYMBOL[3] = {'#', '`', '%'};
@@ -76,7 +123,7 @@ int isKeyPressed() {
 	return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
 }
 
-void getItemAtXY(char * symbol, struct GameState gameState, int x, int y) {
+void getItemAtXY(char** symbol, struct GameState gameState, int x, int y) {
 	unsigned char * playerNumber = &(gameState.numberOfPlayers);
 	for(int i=0; i < *playerNumber; i++) {
 		struct Player * currentPlayer = &(gameState.player[i]);
@@ -84,7 +131,7 @@ void getItemAtXY(char * symbol, struct GameState gameState, int x, int y) {
 		if (currentPlayer->x == x && currentPlayer->y == y) {
 			*symbol = currentPlayer->symbol;
 		} else if ((gunDir->xOffset + currentPlayer->x) == x && (gunDir->yOffset + currentPlayer->y) == y) {
-			*symbol = gunDir->symbol;
+			*symbol = gunSymbol[i][currentPlayer->dir];
 		}
 	}
 }
@@ -97,7 +144,7 @@ int main() {
 	player1.y = 1;
 	player1.x = 1;
 	player1.dir = 0;
-	player1.symbol = '0';
+	player1.symbol = "\033[34m0\033[0m";
 	
 
 	struct GameState gameState = {
@@ -135,10 +182,10 @@ int main() {
 
 		for (int y=BOARD_Y - 1; y >= 0; y--) {
 			for (int x=0; x<BOARD_X; x++) {
-				char symbol = '\0';
+				char* symbol = NULL;
 				getItemAtXY(&symbol, gameState, x, y);
-				if (symbol != '\0') {
-					printf("%c", symbol);
+				if (symbol) {
+					printf("%s", symbol);
 				} else {
 					printf("%c", MAP_SYMBOL[gameState.gameBoard[y][x]]);
 				}
