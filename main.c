@@ -43,7 +43,7 @@ struct Bullets {
 
 struct GameState{
 	unsigned char numberOfPlayers;
-	unsigned char gameBoard[MAC_BOARD_Y][MAC_BOARD_X];
+	int gameBoard[MAC_BOARD_Y][MAC_BOARD_X];
 	struct Player player[MAX_NUMBER_OF_PLAYERS];
 	struct Bullets bullets;
 };
@@ -125,8 +125,8 @@ static char* gunSymbol[4][8] = {
     }
 };
 
-static char MAP_SYMBOL[3] = {'#', '`', '%'};
-static _Bool MAP_OBSTRUCTION[3] = {1, 0, 1};
+static char MAP_SYMBOL[3] = {'`', 'X', '%'};
+static _Bool MAP_OBSTRUCTION[3] = {0, 1, 1};
 
 // Function to configure terminal for non-blocking input
 void configureTerminal(struct termios *old) {
@@ -181,11 +181,11 @@ _Bool testNewPosPlayerCollision(int y, int x, int dir, struct GameState* gameSta
 		int turretY = y + gunDir->yOffset;
 		if (x < 0 || turretX < 0) {
 			return 0;
-		} else if (y < 0 || turretX < 0) {
+		} else if (y < 0 || turretY < 0) {
 			return 0;
-		} else if (y >= (BOARD_Y - 1) || turretY >= (BOARD_Y - 1)) {
+		} else if (y >= (BOARD_Y) || turretY >= (BOARD_Y)) {
 			return 0;
-		} else if (x >= (BOARD_X - 1) || turretX >= (BOARD_X - 1)) {
+		} else if (x >= (BOARD_X) || turretX >= (BOARD_X)) {
 			return 0;
 		} else if (MAP_OBSTRUCTION[gameState->gameBoard[y][x]]) {
 			return 0;
@@ -195,15 +195,15 @@ _Bool testNewPosPlayerCollision(int y, int x, int dir, struct GameState* gameSta
 		return 1;
 }
 
-_Bool isBulletAt(struct GameState* gamestate, int y, int x) {
+struct Bullet* getBulletAt(struct GameState* gamestate, int y, int x) {
 	struct Bullets* bs = &gamestate->bullets;
 	for (int i=0; i<bs->maxBullets; i++) {
 		struct Bullet* crtB = &bs->bullet[i];
 		if (crtB->active && crtB->y == y && crtB->x == x) {
-			return 1;
+			return crtB;
 		}
 	}
-	return 0;
+	return NULL;
 }
 
 void moveBullets(struct GameState* gamestate) {
@@ -235,24 +235,24 @@ int main() {
 		.numberOfPlayers = 1,
 		.gameBoard = {
 			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
-			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 		},
 		.player = {player1},
@@ -270,13 +270,20 @@ int main() {
 			for (int x=0; x<BOARD_X; x++) {
 				char* symbol = NULL;
 				getItemAtXY(&symbol, &gameState, y, x);
-				_Bool isBullet = isBulletAt(&gameState, y, x);
-				if (symbol) {
+				int* mapTerrainNum = &gameState.gameBoard[y][x];
+				struct Bullet* bullet = getBulletAt(&gameState, y, x);
+				if (bullet) {
+					if (MAP_OBSTRUCTION[*mapTerrainNum]) {
+						*mapTerrainNum = 0;
+						bullet->active = 0;
+						printf("%c", MAP_SYMBOL[*mapTerrainNum]);
+					} else {
+						printf("%c", bulletSymbol);
+					}
+				} else if (symbol) {
 					printf("%s", symbol);
-				} else if (isBullet) {
-					printf("%c", bulletSymbol);
 				} else {
-					printf("%c", MAP_SYMBOL[gameState.gameBoard[y][x]]);
+					printf("%c", MAP_SYMBOL[*mapTerrainNum]);
 				}
 			}
 			printf("\n");
