@@ -25,12 +25,14 @@ struct Player {
 	int dir;
 };
 
+static char bulletSymbol = 'o';
+
 struct Bullet {
 	int y;
 	int x;
 	int yDir;
 	int xDir;
-	_Bool done;
+	_Bool active;
 };
 
 struct Bullets {
@@ -166,9 +168,9 @@ void addBullet (int plyrNum, struct GameState* gameState) {
 	struct Player * player = &gameState->player[plyrNum];
 	struct GunDir * gunDir = &gunDirs[player->dir];
 	struct Bullets * bullets = &gameState->bullets;
-	bullets->bullet[bullets->i] = (struct Bullet){player->y + gunDir->yOffset, player->x + gunDir->xOffset, gunDir->yOffset, gunDir->xOffset, 0};
-	bullets->i++;
-	if (bullets->maxBullets >= bullets->i) {
+	bullets->bullet[bullets->i] = (struct Bullet){player->y + gunDir->yOffset, player->x + gunDir->xOffset, gunDir->yOffset, gunDir->xOffset, 1};
+	bullets->i += 1;
+	if (bullets->i >= bullets->maxBullets) {
 		bullets->i = 0;
 	}
 };
@@ -191,6 +193,32 @@ _Bool testNewPosPlayerCollision(int y, int x, int dir, struct GameState* gameSta
 			return 0;
 		}
 		return 1;
+}
+
+_Bool isBulletAt(struct GameState* gamestate, int y, int x) {
+	struct Bullets* bs = &gamestate->bullets;
+	for (int i=0; i<bs->maxBullets; i++) {
+		struct Bullet* crtB = &bs->bullet[i];
+		if (crtB->active && crtB->y == y && crtB->x == x) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void moveBullets(struct GameState* gamestate) {
+	struct Bullets* bs = &gamestate->bullets;
+	for (int i=0; i<bs->maxBullets; i++) {
+		struct Bullet* crtB = &bs->bullet[i];
+		if (crtB->active) {
+			crtB->y += crtB->yDir;
+			crtB->x += crtB->xDir;
+		}
+
+		if (crtB->y < 0 || crtB->y >= BOARD_Y || crtB->x < 0 || crtB->x >= BOARD_X) {
+			crtB->active = 0;
+		}
+	}
 }
 
 int main() {
@@ -242,8 +270,11 @@ int main() {
 			for (int x=0; x<BOARD_X; x++) {
 				char* symbol = NULL;
 				getItemAtXY(&symbol, &gameState, y, x);
+				_Bool isBullet = isBulletAt(&gameState, y, x);
 				if (symbol) {
 					printf("%s", symbol);
+				} else if (isBullet) {
+					printf("%c", bulletSymbol);
 				} else {
 					printf("%c", MAP_SYMBOL[gameState.gameBoard[y][x]]);
 				}
@@ -293,6 +324,7 @@ int main() {
 				addBullet(0, &gameState);
 			}
 		}
+		moveBullets(&gameState);
 		usleep(33000); // Sleep for 100ms to reduce CPU usage
 	}
 	return 0;
