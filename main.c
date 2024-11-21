@@ -6,8 +6,8 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define MAC_BOARD_X 27
-#define MAC_BOARD_Y 20
+#define MAC_BOARD_X 120
+#define MAC_BOARD_Y 60
 #define MAX_NUMBER_OF_PLAYERS 4
 #define MAX_BULLETS 200
 
@@ -128,6 +128,35 @@ static char* gunSymbol[4][8] = {
 static char MAP_SYMBOL[3] = {'`', 'X', '%'};
 static _Bool MAP_OBSTRUCTION[3] = {0, 1, 1};
 
+void clear6Square(int gameBoard[MAC_BOARD_Y][MAC_BOARD_X], int bttmY, int bttmX) {
+	for (int y=bttmY; y<bttmY+7; y++) {
+		for (int x=bttmX; x<bttmX+7; x++) {
+			gameBoard[y][x] = 0;
+		}
+	}
+}
+
+void initGameBoard(int gameBoard[MAC_BOARD_Y][MAC_BOARD_X]) {
+	for (int y=0; y < BOARD_Y; y++) {
+		for (int x=0; x < BOARD_X; x++) {
+			int randomNum = rand() % 40;
+			if (randomNum == 0) {
+				gameBoard[y][x] = 1;
+			} else if (randomNum == 1) {
+				gameBoard[y][x] = 2;
+			} else {
+				gameBoard[y][x] = 0;
+			}
+		}
+	}
+	// Clean up the spawn area
+	int endIndexOffset = 7;
+	clear6Square(gameBoard, 0, 0);
+	clear6Square(gameBoard, 0, BOARD_X - endIndexOffset);
+	clear6Square(gameBoard, BOARD_Y - endIndexOffset, BOARD_X - endIndexOffset);
+	clear6Square(gameBoard, BOARD_Y - endIndexOffset, 0);
+}
+
 // Function to configure terminal for non-blocking input
 void configureTerminal(struct termios *old) {
     struct termios new;
@@ -229,36 +258,14 @@ int main() {
 	player1.y = 1;
 	player1.x = 1;
 	player1.dir = 0;
-	
 
 	struct GameState gameState = {
 		.numberOfPlayers = 1,
-		.gameBoard = {
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-		},
 		.player = {player1},
 		.bullets.maxBullets = MAX_BULLETS,
 		.bullets.i = 0
 	};
+	initGameBoard(gameState.gameBoard);
 
 	struct termios old;
 	configureTerminal(&old);
@@ -323,7 +330,7 @@ int main() {
 				} else {
 					newDir = (*pDir - 1);
 				}
-				
+			
 				if (testNewPosPlayerCollision(*pY, *pX, newDir, &gameState)) {
 					gameState.player[0].dir = newDir;
 				}
