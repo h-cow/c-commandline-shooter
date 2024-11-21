@@ -20,8 +20,8 @@ struct Location {
 };
 
 struct Player {
-	int x;
 	int y;
+	int x;
 	int dir;
 };
 
@@ -149,7 +149,7 @@ int isKeyPressed() {
 	return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
 }
 
-void getItemAtXY(char** symbol, struct GameState* gameState, int x, int y) {
+void getItemAtXY(char** symbol, struct GameState* gameState, int y, int x) {
 	unsigned char * playerNumber = &(gameState->numberOfPlayers);
 	for(int i=0; i < *playerNumber; i++) {
 		struct Player * currentPlayer = &(gameState->player[i]);
@@ -241,7 +241,7 @@ int main() {
 		for (int y=BOARD_Y - 1; y >= 0; y--) {
 			for (int x=0; x<BOARD_X; x++) {
 				char* symbol = NULL;
-				getItemAtXY(&symbol, &gameState, x, y);
+				getItemAtXY(&symbol, &gameState, y, x);
 				if (symbol) {
 					printf("%s", symbol);
 				} else {
