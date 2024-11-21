@@ -9,6 +9,7 @@
 #define MAC_BOARD_X 27
 #define MAC_BOARD_Y 20
 #define MAX_NUMBER_OF_PLAYERS 4
+#define MAX_BULLETS 200
 
 static int BOARD_X = MAC_BOARD_X;
 static int BOARD_Y = MAC_BOARD_Y;
@@ -24,10 +25,25 @@ struct Player {
 	int dir;
 };
 
+struct Bullet {
+	int y;
+	int x;
+	int yDir;
+	int xDir;
+	_Bool done;
+};
+
+struct Bullets {
+	int maxBullets;
+	int i;
+	struct Bullet bullet[200];
+};
+
 struct GameState{
 	unsigned char numberOfPlayers;
 	unsigned char gameBoard[MAC_BOARD_Y][MAC_BOARD_X];
 	struct Player player[MAX_NUMBER_OF_PLAYERS];
+	struct Bullets bullets;
 };
 
 struct GunDir{
@@ -133,10 +149,10 @@ int isKeyPressed() {
 	return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
 }
 
-void getItemAtXY(char** symbol, struct GameState gameState, int x, int y) {
-	unsigned char * playerNumber = &(gameState.numberOfPlayers);
+void getItemAtXY(char** symbol, struct GameState* gameState, int x, int y) {
+	unsigned char * playerNumber = &(gameState->numberOfPlayers);
 	for(int i=0; i < *playerNumber; i++) {
-		struct Player * currentPlayer = &(gameState.player[i]);
+		struct Player * currentPlayer = &(gameState->player[i]);
 		struct GunDir * gunDir = &(gunDirs[currentPlayer->dir]);
 		if (currentPlayer->x == x && currentPlayer->y == y) {
 			*symbol = playerSymbol[i];
@@ -146,7 +162,18 @@ void getItemAtXY(char** symbol, struct GameState gameState, int x, int y) {
 	}
 }
 
-_Bool testNewPosPlayerCollision(int y, int x, int dir, struct GameState gameState) {
+void addBullet (int plyrNum, struct GameState* gameState) {
+	struct Player * player = &gameState->player[plyrNum];
+	struct GunDir * gunDir = &gunDirs[player->dir];
+	struct Bullets * bullets = &gameState->bullets;
+	bullets->bullet[bullets->i] = (struct Bullet){player->y + gunDir->yOffset, player->x + gunDir->xOffset, gunDir->yOffset, gunDir->xOffset, 0};
+	bullets->i++;
+	if (bullets->maxBullets >= bullets->i) {
+		bullets->i = 0;
+	}
+};
+
+_Bool testNewPosPlayerCollision(int y, int x, int dir, struct GameState* gameState) {
 		struct GunDir * gunDir = &(gunDirs[dir]);
 		int turretX = x + gunDir->xOffset;
 		int turretY = y + gunDir->yOffset;
@@ -158,9 +185,9 @@ _Bool testNewPosPlayerCollision(int y, int x, int dir, struct GameState gameStat
 			return 0;
 		} else if (x >= (BOARD_X - 1) || turretX >= (BOARD_X - 1)) {
 			return 0;
-		} else if (MAP_OBSTRUCTION[gameState.gameBoard[y][x]]) {
+		} else if (MAP_OBSTRUCTION[gameState->gameBoard[y][x]]) {
 			return 0;
-		} else if (MAP_OBSTRUCTION[gameState.gameBoard[turretY][turretX]]) {
+		} else if (MAP_OBSTRUCTION[gameState->gameBoard[turretY][turretX]]) {
 			return 0;
 		}
 		return 1;
@@ -200,7 +227,9 @@ int main() {
 			{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
 			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 		},
-		.player = {player1}
+		.player = {player1},
+		.bullets.maxBullets = MAX_BULLETS,
+		.bullets.i = 0
 	};
 
 	struct termios old;
@@ -212,7 +241,7 @@ int main() {
 		for (int y=BOARD_Y - 1; y >= 0; y--) {
 			for (int x=0; x<BOARD_X; x++) {
 				char* symbol = NULL;
-				getItemAtXY(&symbol, gameState, x, y);
+				getItemAtXY(&symbol, &gameState, x, y);
 				if (symbol) {
 					printf("%s", symbol);
 				} else {
@@ -229,27 +258,26 @@ int main() {
 			if (ch == ';') {
 				isGameOn = 0;
 			} else if (ch == 'w') {
-				if (testNewPosPlayerCollision(*pY + 1, *pX, *pDir, gameState)) {
+				if (testNewPosPlayerCollision(*pY + 1, *pX, *pDir, &gameState)) {
 					*pY += 1;
 				}
 			} else if (ch == 's') {
-				if (testNewPosPlayerCollision(*pY - 1, *pX, *pDir, gameState)) {
+				if (testNewPosPlayerCollision(*pY - 1, *pX, *pDir, &gameState)) {
 					*pY -= 1;
 				}
 			} else if (ch == 'd') {
-				if (testNewPosPlayerCollision(*pY, *pX + 1, *pDir, gameState)) {
+				if (testNewPosPlayerCollision(*pY, *pX + 1, *pDir, &gameState)) {
 					*pX += 1;
 				}
 			} else if (ch == 'a') {
-				if (testNewPosPlayerCollision(*pY, *pX - 1, *pDir, gameState)) {
+				if (testNewPosPlayerCollision(*pY, *pX - 1, *pDir, &gameState)) {
 					*pX -= 1;
 				}
 			} else if (ch == 'k') {
 				int newDir = (gameState.player[0].dir + 1) % 8;
-				if (testNewPosPlayerCollision(*pY, *pX, newDir, gameState)) {
+				if (testNewPosPlayerCollision(*pY, *pX, newDir, &gameState)) {
 					gameState.player[0].dir = newDir;
 				}
-
 			} else if (ch == 'j') {
 				int newDir;
 				if (*pDir == 0) {
@@ -258,9 +286,11 @@ int main() {
 					newDir = (*pDir - 1);
 				}
 				
-				if (testNewPosPlayerCollision(*pY, *pX, newDir, gameState)) {
+				if (testNewPosPlayerCollision(*pY, *pX, newDir, &gameState)) {
 					gameState.player[0].dir = newDir;
 				}
+			} else if (ch == ' ') {
+				addBullet(0, &gameState);
 			}
 		}
 		usleep(33000); // Sleep for 100ms to reduce CPU usage
