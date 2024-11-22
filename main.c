@@ -10,9 +10,11 @@
 #define MAC_BOARD_Y 60
 #define MAX_NUMBER_OF_PLAYERS 4
 #define MAX_BULLETS 200
+#define MAC_EXPLOSION_LENGTH 6
 
 static int BOARD_X = MAC_BOARD_X;
 static int BOARD_Y = MAC_BOARD_Y;
+static int EXPLOSION_LENGTH = MAC_EXPLOSION_LENGTH;
 
 struct Location {
 	unsigned char y;
@@ -41,9 +43,23 @@ struct Bullets {
 	struct Bullet bullet[200];
 };
 
+enum EXPLOSION_SQUARE_TYPE {
+	HEAVY_EXPLOSTION,
+	LIGHT_EXPLOSTION,
+	LIGHT_DELAYED1_EXPLOSION,
+	LIGHT_DELAYED2_EXPLOSION,
+	LIGHT_DELAYED3_EXPLOSION
+};
+
+struct ExplosionSquare {
+	enum EXPLOSION_SQUARE_TYPE explosionType;
+	int currentStage;
+};
+
 struct GameState{
 	unsigned char numberOfPlayers;
 	int gameBoard[MAC_BOARD_Y][MAC_BOARD_X];
+	struct ExplosionSquare explosionMap[MAC_BOARD_Y][MAC_BOARD_X];
 	struct Player player[MAX_NUMBER_OF_PLAYERS];
 	struct Bullets bullets;
 };
@@ -127,11 +143,61 @@ static char* gunSymbol[4][8] = {
 
 static char MAP_SYMBOL[3] = {'`', 'X', '%'};
 static _Bool MAP_OBSTRUCTION[3] = {0, 1, 1};
+static int MAP_OBSTRUCTION_EXPLOSION_SIZE[3] = {0, 1, 3};
+
+enum EXPLOSION_SQUARE_PHASE {
+	NO_EXPLOSION,
+	HOTTEST,
+	REALLY_HOT,
+	HOT,
+	SMOKE,
+	LIGHT_SMOKE
+};
+const char* explosionSymbols[6] = {
+    " ",                          // Space
+    "\033[37m@\033[0m",           // White @
+    "\033[33m@\033[0m",           // Orange @ (yellow in ANSI)
+    "\033[31m@\033[0m",           // Red @
+    "\033[90m@\033[0m",           // Gray @
+    "\033[90mC\033[0m"            // Gray C
+};
+
+static int EXPLOSION_STEP[5][MAC_EXPLOSION_LENGTH] = {
+	{HOTTEST, REALLY_HOT, HOT, SMOKE, LIGHT_SMOKE, NO_EXPLOSION},
+	{REALLY_HOT, HOT, SMOKE, LIGHT_SMOKE, NO_EXPLOSION, NO_EXPLOSION},
+	{NO_EXPLOSION, REALLY_HOT, HOT, SMOKE, LIGHT_SMOKE, NO_EXPLOSION},
+	{NO_EXPLOSION, NO_EXPLOSION, REALLY_HOT, HOT, SMOKE, LIGHT_SMOKE},
+	{NO_EXPLOSION, NO_EXPLOSION, NO_EXPLOSION, HOT, SMOKE, LIGHT_SMOKE}
+};
+
+void triggerExplosion(struct GameState* gameState, int mapTerrainNum, int y, int x) {
+	int size = MAP_OBSTRUCTION_EXPLOSION_SIZE[mapTerrainNum];
+	if (size && size == 1) {
+		gameState->explosionMap[y][x] = (struct ExplosionSquare){LIGHT_EXPLOSTION, 1};
+	} else if (size > 1) {
+		gameState->explosionMap[y][x] = (struct ExplosionSquare){HEAVY_EXPLOSTION, 1};
+	}
+}
+
 
 void clear6Square(int gameBoard[MAC_BOARD_Y][MAC_BOARD_X], int bttmY, int bttmX) {
 	for (int y=bttmY; y<bttmY+7; y++) {
 		for (int x=bttmX; x<bttmX+7; x++) {
 			gameBoard[y][x] = 0;
+		}
+	}
+}
+
+void animateExplosions(struct GameState* gameState) {
+	for (int y=0; y<BOARD_Y; y++) {
+		for (int x=0; x<BOARD_X; x++) {
+			struct ExplosionSquare* expSqr= &gameState->explosionMap[y][x];
+			if (expSqr->currentStage > 0) {
+				expSqr->currentStage += 1;
+			}
+			if (expSqr->currentStage > 6) {
+				expSqr->currentStage = 0;
+			}
 		}
 	}
 }
@@ -276,11 +342,15 @@ int main() {
 		for (int y=BOARD_Y - 1; y >= 0; y--) {
 			for (int x=0; x<BOARD_X; x++) {
 				char* symbol = NULL;
+				struct ExplosionSquare explosionSquare = gameState.explosionMap[y][x];
 				getItemAtXY(&symbol, &gameState, y, x);
 				int* mapTerrainNum = &gameState.gameBoard[y][x];
 				struct Bullet* bullet = getBulletAt(&gameState, y, x);
-				if (bullet) {
+				if (explosionSquare.currentStage > 0) {
+					printf("%s", explosionSymbols[1]);
+				} else if (bullet) {
 					if (MAP_OBSTRUCTION[*mapTerrainNum]) {
+						triggerExplosion(&gameState, *mapTerrainNum, y, x);
 						*mapTerrainNum = 0;
 						bullet->active = 0;
 						printf("%c", MAP_SYMBOL[*mapTerrainNum]);
@@ -339,6 +409,7 @@ int main() {
 			}
 		}
 		moveBullets(&gameState);
+		animateExplosions(&gameState);
 		usleep(33000); // Sleep for 100ms to reduce CPU usage
 	}
 	return 0;
