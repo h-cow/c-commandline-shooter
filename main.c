@@ -145,6 +145,7 @@ static char* gunSymbol[4][8] = {
 static char MAP_SYMBOL[3] = {'`', 'X', '%'};
 static _Bool MAP_OBSTRUCTION[3] = {0, 1, 1};
 static int MAP_OBSTRUCTION_EXPLOSION_SIZE[3] = {0, 3, 2};
+static _Bool MAP_OBSTRUCTION_VULNERABLE_EXPLOSION[3] = {0, 1, 0};
 
 enum EXPLOSION_SQUARE_PHASE {
 	NO_EXPLOSION,
@@ -191,15 +192,20 @@ void triggerExplosion(struct GameState* gameState, int mapTerrainNum, int y, int
 				int diffX = abs(x - cX);
 				int distFromCenter = diffY + diffX;
 				if (distFromCenter == 0) {
-					gameState->explosionMap[cY][cX] = (struct ExplosionSquare){HEAVY_EXPLOSTION, 1};
+					gameState->explosionMap[cY][cX].currentStage = 1;
+					gameState->explosionMap[cY][cX].explosionType = HEAVY_EXPLOSTION;
 				} else if (distFromCenter <= size && distFromCenter <= 1) {
-					gameState->explosionMap[cY][cX] = (struct ExplosionSquare){LIGHT_EXPLOSTION, 1};
+					gameState->explosionMap[cY][cX].currentStage = 1;
+					gameState->explosionMap[cY][cX].explosionType = LIGHT_EXPLOSTION;
 				} else if (distFromCenter <= size && distFromCenter <= 2) {
-					gameState->explosionMap[cY][cX] = (struct ExplosionSquare){LIGHT_DELAYED1_EXPLOSION, 1};
+					gameState->explosionMap[cY][cX].currentStage = 1;
+					gameState->explosionMap[cY][cX].explosionType = LIGHT_DELAYED1_EXPLOSION;
 				} else if (distFromCenter <= size && distFromCenter <= 3) {
-					gameState->explosionMap[cY][cX] = (struct ExplosionSquare){LIGHT_DELAYED2_EXPLOSION, 1};
+					gameState->explosionMap[cY][cX].currentStage = 1;
+					gameState->explosionMap[cY][cX].explosionType = LIGHT_DELAYED2_EXPLOSION;
 				} else if (distFromCenter <= size) {
-					gameState->explosionMap[cY][cX] = (struct ExplosionSquare){LIGHT_DELAYED3_EXPLOSION, 1};
+					gameState->explosionMap[cY][cX].currentStage = 1;
+					gameState->explosionMap[cY][cX].explosionType = LIGHT_DELAYED3_EXPLOSION;
 				}
 			}
 		}
@@ -232,10 +238,10 @@ void animateExplosions(struct GameState* gameState) {
 void initGameBoard(int gameBoard[MAC_BOARD_Y][MAC_BOARD_X]) {
 	for (int y=0; y < BOARD_Y; y++) {
 		for (int x=0; x < BOARD_X; x++) {
-			int randomNum = rand() % 40;
-			if (randomNum == 0) {
+			int randomNum = rand() % 50;
+			if (randomNum < 2) {
 				gameBoard[y][x] = 1;
-			} else if (randomNum == 1) {
+			} else if (randomNum == 40) {
 				gameBoard[y][x] = 2;
 			} else {
 				gameBoard[y][x] = 0;
@@ -374,6 +380,10 @@ int main() {
 				int* mapTerrainNum = &gameState.gameBoard[y][x];
 				struct Bullet* bullet = getBulletAt(&gameState, y, x);
 				if (explosionSquare.currentStage > 0) {
+					if (MAP_OBSTRUCTION_VULNERABLE_EXPLOSION[*mapTerrainNum]) {
+						triggerExplosion(&gameState, *mapTerrainNum, y, x);
+						*mapTerrainNum = 0;
+					}
 					printf("%s", getExplosionSymbol(&explosionSquare));
 				} else if (bullet) {
 					if (MAP_OBSTRUCTION[*mapTerrainNum]) {
